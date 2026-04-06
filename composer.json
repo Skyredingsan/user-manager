@@ -1,0 +1,15 @@
+{
+    "name": "skyreding/user-manager",
+    "autoload": {
+        "psr-4": {
+            "Skyreding\\UserManager\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Skyredingsan",
+            "email": "Skyreding@mail.ru"
+        }
+    ],
+    "require": {}
+}
