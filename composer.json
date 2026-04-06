@@ -2,7 +2,7 @@
     "name": "skyreding/user-manager",
     "autoload": {
         "psr-4": {
-            "Skyreding\\UserManager\\": "src/"
+            "UserManager\\": "src/"
         }
     },
     "authors": [
