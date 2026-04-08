@@ -11,5 +11,9 @@
             "email": "Skyreding@mail.ru"
         }
     ],
-    "require": {}
+    "require": {
+        "fakerphp/faker": "^1.24",
+        "php": ">=8.0",
+        "ext-mbstring": "*"
+    }
 }

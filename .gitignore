@@ -1,8 +1,6 @@
 /vendor/
-/composer.lock
 /data/*.json
 !.data/users.json
 .DS_Store
 /.idea/
 /.phpunit.cache
-EOF
