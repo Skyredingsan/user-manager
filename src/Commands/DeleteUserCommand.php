@@ -1,19 +1,19 @@
 <?php
 
+declare (strict_types = 1);
+
 namespace UserManager\Commands;
 
 use UserManager\Repositories\UserRepositoryInterface;
 
-class DeleteUserCommand implements CommandInterface
+final class DeleteUserCommand implements CommandInterface
 {
-    private UserRepositoryInterface $repository;
-    private ?int $userId;
 
-    public function __construct(UserRepositoryInterface $repository, ?int $userId = null)
-    {
-        $this->repository = $repository;
-        $this->userId = $userId;
-    }
+    public function __construct(
+        private readonly UserRepositoryInterface $repository,
+        private readonly ?int $userId
+        )
+    {}
 
     public function execute(): void
     {

@@ -1,37 +1,43 @@
 <?php
 
+declare(strict_types=1);
+
 namespace UserManager\Models;
 
-class User {
-    private int $id;
-    private string $firstName;
-    private string $lastName;
-    private string $email;
+final readonly class User {
 
-    public function __construct(int $id, string $firstName, string $lastName, string $email) {
-        $this->id = $id;
-        $this->firstName = $firstName;
-        $this->lastName = $lastName;
-        $this->email = $email;
-    }
+    public function __construct(
+        private int $id,
+        private string $firstName,
+        private string $lastName,
+        private string $email,
+    ){}
 
-    public function getId(): int {
+    public function getId(): int
+    {
         return $this->id;
     }
 
-    public function getFirstName(): string {
+    public function getFirstName(): string
+    {
         return $this->firstName;
     }
 
-    public function getLastName(): string {
+    public function getLastName(): string
+    {
         return $this->lastName;
     }
 
-    public function getEmail(): string {
+    public function getEmail(): string
+    {
         return $this->email;
     }
 
-    public function toArray(): array {
+    /**
+     * @return array{id: int, firstName: string, lastName: string, email: string}
+     */
+    public function toArray(): array
+    {
         return [
             'id' => $this->id,
             'firstName' => $this->firstName,
@@ -39,6 +45,10 @@ class User {
             'email' => $this->email
         ];
     }
+
+    /**
+     * @param array{id: int, firstName: string, lastName: string, email: string} $data
+     */
     public static function fromArray(array $data): self
     {
         return new self(

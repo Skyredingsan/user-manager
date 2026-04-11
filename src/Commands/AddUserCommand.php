@@ -1,19 +1,19 @@
 <?php
 
+declare (strict_types = 1);
+
 namespace UserManager\Commands;
 
 use UserManager\Repositories\UserRepositoryInterface;
 use UserManager\Models\User;
 use Faker\Factory as FakerFactory;
 
-class AddUserCommand implements CommandInterface
+final class AddUserCommand implements CommandInterface
 {
-    private UserRepositoryInterface $repository;
     private $faker;
-
-
-    public function __construct(UserRepositoryInterface $repository) {
-        $this->repository = $repository;
+    public function __construct(
+        private readonly UserRepositoryInterface $repository
+    ) {
         $this->faker = FakerFactory::create('ru_RU');
     }
 
