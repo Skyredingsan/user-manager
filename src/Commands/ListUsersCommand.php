@@ -1,17 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace UserManager\Commands;
 
 use UserManager\Repositories\UserRepositoryInterface;
+use UserManager\Models\User;
 
-class ListUsersCommand implements CommandInterface
+final class ListUsersCommand implements CommandInterface
 {
-    private UserRepositoryInterface $repository;
-
-    public function __construct(UserRepositoryInterface $repository)
-    {
-        $this->repository = $repository;
-    }
+    public function __construct(
+        private readonly UserRepositoryInterface $repository
+    ) {}
 
     public function execute(): void
     {
@@ -25,38 +25,25 @@ class ListUsersCommand implements CommandInterface
         $this->printTable($users);
     }
 
-    private function printSeparator(array $widths): void
-    {
-        echo "+";
-        foreach ($widths as $width) {
-            echo str_repeat("-", $width) . "+";
-        }
-        echo "\n";
-    }
-
-    private function printHeader(array $widths): void
-    {
-        printf("| %-{$widths[0]}s | %-{$widths[1]}s | %-{$widths[2]}s | %-{$widths[3]}s |\n",
-            "ID", "First Name", "Last Name", "Email");
-    }
-
     private function printTable(array $users): void
     {
-        // Фиксированная ширина колонок
-        $idWidth = 4;
-        $firstNameWidth = 12;
-        $lastNameWidth = 12;
-        $emailWidth = 20;
+        $width = 4;
+        $widthFirstName = 12;
+        $widthLastName = 12;
+        $widthEmail = 25;
 
-        // Шапка таблицы
-        echo str_repeat("-", $idWidth + $firstNameWidth + $lastNameWidth + $emailWidth + 13) . "\n";
-        printf("| %-{$idWidth}s | %-{$firstNameWidth}s | %-{$lastNameWidth}s | %-{$emailWidth}s |\n",
+        $separator = '+' . str_repeat('-', $width) .
+            '+' . str_repeat('-', $widthFirstName) .
+            '+' . str_repeat('-', $widthLastName) .
+            '+' . str_repeat('-', $widthEmail) . "+\n";
+
+        echo $separator;
+        printf("| %-{$width}s | %-{$widthFirstName}s | %-{$widthLastName}s | %-{$widthEmail}s |\n",
             "ID", "First Name", "Last Name", "Email");
-        echo str_repeat("-", $idWidth + $firstNameWidth + $lastNameWidth + $emailWidth + 13) . "\n";
+        echo $separator;
 
-        // Данные
         foreach ($users as $user) {
-            printf("| %-{$idWidth}d | %-{$firstNameWidth}s | %-{$lastNameWidth}s | %-{$emailWidth}s |\n",
+            printf("| %-{$width}d | %-{$widthFirstName}s | %-{$widthLastName}s | %-{$widthEmail}s |\n",
                 $user->getId(),
                 $user->getFirstName(),
                 $user->getLastName(),
@@ -64,6 +51,6 @@ class ListUsersCommand implements CommandInterface
             );
         }
 
-        echo str_repeat("-", $idWidth + $firstNameWidth + $lastNameWidth + $emailWidth + 13) . "\n";
+        echo $separator;
     }
 }
