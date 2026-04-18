@@ -19,18 +19,17 @@ final class AddUserCommand implements CommandInterface
 
     public function execute(): void
     {
-        $id = $this->repository->getNextId();
 
         $firstName = $this->faker->firstName();
         $lastName = $this->faker->lastName();
         $email = $this->faker->unique()->Email();
 
-        $user = new User($id, $firstName, $lastName, $email);
+        $user = new User(0, $firstName, $lastName, $email);
         $this->repository->save($user);
 
 
         echo "✅ Пользователь добавлен:\n";
-        echo "   ID: {$id}\n";
+        echo "   ID: {$user->getId()}\n";
         echo "   Имя: {$firstName}\n";
         echo "   Фамилия: {$lastName}\n";
         echo "   Email: {$email}\n";

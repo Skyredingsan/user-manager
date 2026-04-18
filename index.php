@@ -5,16 +5,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Dotenv\Dotenv;
-use UserManager\Repositories\JsonUserRepository;
-use UserManager\Repositories\MysqlUserRepository;
 use UserManager\Commands\ListUsersCommand;
 use UserManager\Commands\AddUserCommand;
 use UserManager\Commands\DeleteUserCommand;
+use UserManager\Repositories\RepositoryFactory;
 
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 $dbSource = $_ENV['DB_SOURCE'] ?? 'json';
+
 
 try {
     $repository = match($dbSource) {

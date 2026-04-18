@@ -11,7 +11,7 @@ use RuntimeException;
 
 final class MysqlUserRepository implements UserRepositoryInterface
 {
-    private readonly PDO $connection;
+    private PDO $connection;
 
     public function __construct(
         private readonly array $config
@@ -37,7 +37,8 @@ final class MysqlUserRepository implements UserRepositoryInterface
             ]);
 
             return $pdo;
-        } catch (PDOException $e) {
+        } catch (PDOException $e)
+        {
             throw new RuntimeException("MySQL connection failed: " . $e->getMessage());
         }
     }
@@ -74,12 +75,15 @@ final class MysqlUserRepository implements UserRepositoryInterface
 
     public function save(User $user): void
     {
-        $existing = $this->findById($user->getId());
 
-        if ($existing !== null) {
-            $sql = 'UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?';
+        $existingId = $user->getId();
+
+        if ($existingId > 0 && $this->findById($existingId) !== null)
+        {
+            $sql = "UPDATE users SET first_name= ? , last_name= ?, email= ? WHERE id = ?";
             $stmt = $this->connection->prepare($sql);
-            $stmt->execute([
+            $stmt->execute
+            ([
                 $user->getFirstName(),
                 $user->getLastName(),
                 $user->getEmail(),
@@ -88,13 +92,17 @@ final class MysqlUserRepository implements UserRepositoryInterface
             return;
         }
 
-        $sql = 'INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)';
+        $sql = "INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)";
         $stmt = $this->connection->prepare($sql);
-        $stmt->execute([
+        $stmt->execute
+        ([
             $user->getFirstName(),
             $user->getLastName(),
             $user->getEmail()
         ]);
+
+        $lastId = (int)$this->connection->lastInsertId();
+        $user->setId($lastId);
     }
 
     public function delete(int $id): bool
@@ -123,14 +131,5 @@ final class MysqlUserRepository implements UserRepositoryInterface
             $row['last_name'],
             $row['email']
         );
-    }
-
-    public function getNextId(): int
-    {
-        $sql = 'SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM users';
-        $stmt = $this->connection->query($sql);
-        $row = $stmt->fetch();
-
-        return (int)($row['next_id'] ?? 1);
     }
 }
