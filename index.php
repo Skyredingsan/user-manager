@@ -8,7 +8,9 @@ use Dotenv\Dotenv;
 use UserManager\Commands\ListUsersCommand;
 use UserManager\Commands\AddUserCommand;
 use UserManager\Commands\DeleteUserCommand;
-use UserManager\Repositories\RepositoryFactory;
+use UserManager\Repositories\JsonUserRepository;
+use UserManager\Repositories\MysqlUserRepository;
+
 
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
