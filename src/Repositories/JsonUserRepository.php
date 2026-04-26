@@ -208,4 +208,14 @@ final class JsonUserRepository implements UserRepositoryInterface
     {
         return $this->users[$id] ?? null;
     }
+
+    public function findByEmail(string $email): ?User
+    {
+        foreach ($this->users as $user) {
+            if (strtolower($user->getEmail()) === strtolower($email)) {
+                return $user;
+            }
+        }
+        return null;
+    }
 }

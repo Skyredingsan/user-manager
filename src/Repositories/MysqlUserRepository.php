@@ -132,4 +132,23 @@ final class MysqlUserRepository implements UserRepositoryInterface
             $row['email']
         );
     }
+
+    public function findByEmail(string $email): ?User
+    {
+        $sql = 'SELECT * FROM users WHERE email = ?';
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$email]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            return null;
+        }
+
+        return new User(
+            (int)$row['id'],
+            $row['first_name'],
+            $row['last_name'],
+            $row['email']
+        );
+    }
 }
