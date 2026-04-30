@@ -1,31 +1,27 @@
 <?php
 
-declare (strict_types = 1);
+declare(strict_types=1);
 
 namespace UserManager\Commands;
 
-use UserManager\Repositories\UserRepositoryInterface;
+use UserManager\Services\UserService;
+use UserManager\Exceptions\ValidationException;
 
 final class DeleteUserCommand implements CommandInterface
 {
-
     public function __construct(
-        private readonly UserRepositoryInterface $repository,
+        private readonly UserService $service,
         private readonly ?int $userId
-        )
-    {}
+    ) {}
 
-    public function execute(): void
+    public function execute(): string
     {
         if ($this->userId === null || $this->userId <= 0) {
-            echo "❌ Ошибка: ID пользователя должен быть положительным числом\n";
-            echo "   Использование: php index.php delete <id>\n";
-            return;
-        };
+            throw new ValidationException("User ID must be not null and positive integer");
+        }
 
-        $this->repository->delete($this->userId);
+        $this->service->delete($this->userId);
 
-        print_r("Пользователь с ID {$this->userId} успешно удален\n");
-
+        return sprintf(" User with ID %d deleted successfully", $this->userId);
     }
 }

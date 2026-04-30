@@ -1,37 +1,40 @@
 <?php
 
-declare (strict_types = 1);
+declare(strict_types=1);
 
 namespace UserManager\Commands;
 
-use UserManager\Repositories\UserRepositoryInterface;
-use UserManager\Models\User;
-use Faker\Factory as FakerFactory;
+use UserManager\Services\UserService;
+use Faker\Factory;
 
 final class AddUserCommand implements CommandInterface
 {
     private $faker;
+
     public function __construct(
-        private readonly UserRepositoryInterface $repository
+        private readonly UserService $service
     ) {
-        $this->faker = FakerFactory::create('ru_RU');
+        $this->faker = Factory::create('ru_RU');
     }
 
-    public function execute(): void
+    public function execute(): string
     {
-
         $firstName = $this->faker->firstName();
         $lastName = $this->faker->lastName();
-        $email = $this->faker->unique()->Email();
+        $email = $this->faker->unique()->email();
 
-        $user = new User(0, $firstName, $lastName, $email);
-        $this->repository->save($user);
+        $user = $this->service->create([
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email
+        ]);
 
-
-        echo "✅ Пользователь добавлен:\n";
-        echo "   ID: {$user->getId()}\n";
-        echo "   Имя: {$firstName}\n";
-        echo "   Фамилия: {$lastName}\n";
-        echo "   Email: {$email}\n";
+        return sprintf(
+            "User added: ID=%d, %s %s, %s",
+            $user->getId(),
+            $user->getFirstName(),
+            $user->getLastName(),
+            $user->getEmail()
+        );
     }
 }
