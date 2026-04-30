@@ -4,29 +4,29 @@ declare(strict_types=1);
 
 namespace UserManager\Commands;
 
-use UserManager\Repositories\UserRepositoryInterface;
-use UserManager\Models\User;
+use UserManager\Services\UserService;
+use UserManager\Exceptions\CliException;
 
 final class ListUsersCommand implements CommandInterface
 {
     public function __construct(
-        private readonly UserRepositoryInterface $repository
+        private readonly UserService $service
     ) {}
 
-    public function execute(): void
+    public function execute(): string
     {
-        $users = $this->repository->findAll();
+        $users = $this->service->list();
 
         if (empty($users)) {
-            print_r("Список пользователей пуст\n");
-            return;
+            return " No users found";
         }
 
-        $this->printTable($users);
+        return $this->renderTable($users);
     }
 
-    private function printTable(array $users): void
+    private function renderTable(array $users): string
     {
+        $output = '';
         $width = 4;
         $widthFirstName = 12;
         $widthLastName = 12;
@@ -37,13 +37,13 @@ final class ListUsersCommand implements CommandInterface
             '+' . str_repeat('-', $widthLastName) .
             '+' . str_repeat('-', $widthEmail) . "+\n";
 
-        echo $separator;
-        printf("| %-{$width}s | %-{$widthFirstName}s | %-{$widthLastName}s | %-{$widthEmail}s |\n",
+        $output .= $separator;
+        $output .= sprintf("| %-{$width}s | %-{$widthFirstName}s | %-{$widthLastName}s | %-{$widthEmail}s |\n",
             "ID", "First Name", "Last Name", "Email");
-        echo $separator;
+        $output .= $separator;
 
         foreach ($users as $user) {
-            printf("| %-{$width}d | %-{$widthFirstName}s | %-{$widthLastName}s | %-{$widthEmail}s |\n",
+            $output .= sprintf("| %-{$width}d | %-{$widthFirstName}s | %-{$widthLastName}s | %-{$widthEmail}s |\n",
                 $user->getId(),
                 $user->getFirstName(),
                 $user->getLastName(),
@@ -51,6 +51,9 @@ final class ListUsersCommand implements CommandInterface
             );
         }
 
-        echo $separator;
+        $output .= $separator;
+        $output .= sprintf(" Total: %d users\n", count($users));
+
+        return $output;
     }
 }

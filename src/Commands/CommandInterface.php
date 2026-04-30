@@ -4,5 +4,5 @@ namespace UserManager\Commands;
 
 interface CommandInterface
 {
-    public function execute(): void;
+    public function execute(): string;
 }
