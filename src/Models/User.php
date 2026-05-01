@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace UserManager\Models;
 
-final class User {
+final class User implements \JsonSerializable {
 
     public function __construct(
         private int $id,
@@ -12,6 +12,11 @@ final class User {
         private string $lastName,
         private string $email,
     ){}
+
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
+    }
 
     public function getId(): int
     {

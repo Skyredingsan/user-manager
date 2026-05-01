@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace UserManager\Repositories;
 
 use UserManager\Models\User;
-use RuntimeException;
+use UserManager\Exceptions\NotFoundException;
+use UserManager\Exceptions\ServerException;
 use JsonException;
 
 final class JsonUserRepository implements UserRepositoryInterface
 {
+    /** @var array<int, User> */
     private array $users = [];
 
     public function __construct(
@@ -28,12 +30,12 @@ final class JsonUserRepository implements UserRepositoryInterface
 
         $fp = fopen($this->filePath, 'r');
         if (!$fp) {
-            throw new RuntimeException("Cannot open file: {$this->filePath}");
+            throw new ServerException("Cannot open file: {$this->filePath}");
         }
 
         if (!flock($fp, LOCK_SH)) {
             fclose($fp);
-            throw new RuntimeException("Cannot lock file for reading");
+            throw new ServerException("Cannot lock file for reading");
         }
 
         try {
@@ -52,7 +54,7 @@ final class JsonUserRepository implements UserRepositoryInterface
                 }
             }
         } catch (JsonException $e) {
-            throw new RuntimeException('Failed to read user data: ' . $e->getMessage());
+            throw new ServerException('Failed to read user data: ' . $e->getMessage());
         } finally {
             flock($fp, LOCK_UN);
             fclose($fp);
@@ -87,24 +89,25 @@ final class JsonUserRepository implements UserRepositoryInterface
         return max(array_keys($this->users)) + 1;
     }
 
-    public function findAll(): array
+    public function list(): array
     {
         return array_values($this->users);
     }
 
-    public function save(User $user): void
+    public function create(User $user): User
     {
         $fp = fopen($this->filePath, 'c+');
         if (!$fp) {
-            throw new RuntimeException("Cannot open file for save");
+            throw new ServerException("Cannot open file for create");
         }
 
         if (!flock($fp, LOCK_EX)) {
             fclose($fp);
-            throw new RuntimeException("Cannot lock file for writing");
+            throw new ServerException("Cannot lock file for writing");
         }
 
         try {
+            // Перечитываем актуальные данные
             fseek($fp, 0);
             $content = stream_get_contents($fp);
             if ($content) {
@@ -119,16 +122,11 @@ final class JsonUserRepository implements UserRepositoryInterface
                 }
             }
 
-            $existingId = $user->getId();
+            $newId = $this->getNextId();
+            $user->setId($newId);
+            $this->users[$newId] = $user;
 
-            if ($existingId > 0 && isset($this->users[$existingId])) {
-                $this->users[$existingId] = $user;
-            } else {
-                $newId = $this->getNextId();
-                $user->setId($newId);
-                $this->users[$newId] = $user;
-            }
-
+            // Сохраняем в файл
             $data = array_map(
                 fn(User $u): array => $u->toArray(),
                 $this->users,
@@ -141,27 +139,30 @@ final class JsonUserRepository implements UserRepositoryInterface
             fwrite($fp, $json);
             fflush($fp);
 
+            return $user;
+
         } catch (JsonException $e) {
-            throw new RuntimeException('Failed to save user data: ' . $e->getMessage());
+            throw new ServerException('Failed to create user: ' . $e->getMessage());
         } finally {
             flock($fp, LOCK_UN);
             fclose($fp);
         }
     }
 
-    public function delete(int $id): bool
+    public function delete(int $id): void
     {
         $fp = fopen($this->filePath, 'c+');
         if (!$fp) {
-            return false;
+            throw new ServerException("Cannot open file for delete");
         }
 
         if (!flock($fp, LOCK_EX)) {
             fclose($fp);
-            return false;
+            throw new ServerException("Cannot lock file for writing");
         }
 
         try {
+            // Перечитываем актуальные данные
             fseek($fp, 0);
             $content = stream_get_contents($fp);
             if ($content) {
@@ -177,11 +178,12 @@ final class JsonUserRepository implements UserRepositoryInterface
             }
 
             if (!isset($this->users[$id])) {
-                return false;
+                throw new NotFoundException("User with ID {$id} not found");
             }
 
             unset($this->users[$id]);
 
+            // Сохраняем в файл
             $data = array_map(
                 fn(User $u): array => $u->toArray(),
                 $this->users,
@@ -194,10 +196,8 @@ final class JsonUserRepository implements UserRepositoryInterface
             fwrite($fp, $json);
             fflush($fp);
 
-            return true;
-
         } catch (JsonException $e) {
-            return false;
+            throw new ServerException('Failed to delete user: ' . $e->getMessage());
         } finally {
             flock($fp, LOCK_UN);
             fclose($fp);
@@ -211,8 +211,9 @@ final class JsonUserRepository implements UserRepositoryInterface
 
     public function findByEmail(string $email): ?User
     {
+        $email = strtolower($email);
         foreach ($this->users as $user) {
-            if (strtolower($user->getEmail()) === strtolower($email)) {
+            if (strtolower($user->getEmail()) === $email) {
                 return $user;
             }
         }

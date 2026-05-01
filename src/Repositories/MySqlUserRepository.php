@@ -1,15 +1,16 @@
 <?php
 
-declare (strict_types = 1);
+declare(strict_types=1);
 
 namespace UserManager\Repositories;
 
 use UserManager\Models\User;
+use UserManager\Exceptions\NotFoundException;
+use UserManager\Exceptions\ServerException;
 use PDO;
 use PDOException;
-use RuntimeException;
 
-final class MysqlUserRepository implements UserRepositoryInterface
+final class MySqlUserRepository implements UserRepositoryInterface
 {
     private PDO $connection;
 
@@ -17,7 +18,7 @@ final class MysqlUserRepository implements UserRepositoryInterface
         private readonly array $config
     ) {
         $this->connection = $this->connect();
-        $this->createTableIfNotExists();
+        $this->initTable();
     }
 
     private function connect(): PDO
@@ -31,19 +32,16 @@ final class MysqlUserRepository implements UserRepositoryInterface
 
             $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
 
-            $pdo = new PDO($dsn, $user, $password, [
+            return new PDO($dsn, $user, $password, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
-
-            return $pdo;
-        } catch (PDOException $e)
-        {
-            throw new RuntimeException("MySQL connection failed: " . $e->getMessage());
+        } catch (PDOException $e) {
+            throw new ServerException("Database connection failed: " . $e->getMessage());
         }
     }
 
-    private function createTableIfNotExists(): void
+    private function initTable(): void
     {
         $sql = "CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -55,76 +53,8 @@ final class MysqlUserRepository implements UserRepositoryInterface
         $this->connection->exec($sql);
     }
 
-    public function findAll(): array
+    private function rowToUser(array $row): User
     {
-        $stmt = $this->connection->query("SELECT * FROM users ORDER BY id");
-        $rows = $stmt->fetchAll();
-
-        $users = [];
-        foreach ($rows as $row) {
-            $users[] = new User(
-                (int)$row['id'],
-                $row['first_name'],
-                $row['last_name'],
-                $row['email']
-            );
-        }
-
-        return $users;
-    }
-
-    public function save(User $user): void
-    {
-
-        $existingId = $user->getId();
-
-        if ($existingId > 0 && $this->findById($existingId) !== null)
-        {
-            $sql = "UPDATE users SET first_name= ? , last_name= ?, email= ? WHERE id = ?";
-            $stmt = $this->connection->prepare($sql);
-            $stmt->execute
-            ([
-                $user->getFirstName(),
-                $user->getLastName(),
-                $user->getEmail(),
-                $user->getId()
-            ]);
-            return;
-        }
-
-        $sql = "INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute
-        ([
-            $user->getFirstName(),
-            $user->getLastName(),
-            $user->getEmail()
-        ]);
-
-        $lastId = (int)$this->connection->lastInsertId();
-        $user->setId($lastId);
-    }
-
-    public function delete(int $id): bool
-    {
-        $sql = 'DELETE FROM users WHERE id = ?';
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute([$id]);
-
-        return $stmt->rowCount() > 0;
-    }
-
-    public function findById(int $id): ?User
-    {
-        $sql = 'SELECT * FROM users WHERE id = ?';
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-
-        if ($row === false) {
-            return null;
-        }
-
         return new User(
             (int)$row['id'],
             $row['first_name'],
@@ -133,9 +63,58 @@ final class MysqlUserRepository implements UserRepositoryInterface
         );
     }
 
+    public function list(): array
+    {
+        $stmt = $this->connection->query("SELECT * FROM users ORDER BY id");
+        $rows = $stmt->fetchAll();
+
+        return array_map(fn(array $row): User => $this->rowToUser($row), $rows);
+    }
+
+    public function create(User $user): User
+    {
+        $sql = "INSERT INTO users (first_name, last_name, email) VALUES (?, ?, ?)";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([
+            $user->getFirstName(),
+            $user->getLastName(),
+            $user->getEmail()
+        ]);
+
+        $generatedId = (int)$this->connection->lastInsertId();
+        $user->setId($generatedId);
+
+        return $user;
+    }
+
+    public function delete(int $id): void
+    {
+        $sql = "DELETE FROM users WHERE id = ?";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$id]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new NotFoundException("User with ID {$id} not found");
+        }
+    }
+
+    public function findById(int $id): ?User
+    {
+        $sql = "SELECT * FROM users WHERE id = ?";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+
+        if ($row === false) {
+            return null;
+        }
+
+        return $this->rowToUser($row);
+    }
+
     public function findByEmail(string $email): ?User
     {
-        $sql = 'SELECT * FROM users WHERE email = ?';
+        $sql = "SELECT * FROM users WHERE LOWER(email) = LOWER(?)";
         $stmt = $this->connection->prepare($sql);
         $stmt->execute([$email]);
         $row = $stmt->fetch();
@@ -144,11 +123,6 @@ final class MysqlUserRepository implements UserRepositoryInterface
             return null;
         }
 
-        return new User(
-            (int)$row['id'],
-            $row['first_name'],
-            $row['last_name'],
-            $row['email']
-        );
+        return $this->rowToUser($row);
     }
 }
