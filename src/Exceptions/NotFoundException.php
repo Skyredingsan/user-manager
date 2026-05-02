@@ -6,14 +6,9 @@ namespace UserManager\Exceptions;
 
 class NotFoundException extends ApiException
 {
-    public function __construct(string $message)
+    public function __construct(string $message = 'Resource not found')
     {
         parent::__construct($message, 404);
-    }
-
-    public function getStatusCode(): int
-    {
-        return 404;
     }
 
     public function getErrorCode(): string

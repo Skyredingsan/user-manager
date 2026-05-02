@@ -17,24 +17,17 @@ final class AddUserCommand implements CommandInterface
         $this->faker = Factory::create('ru_RU');
     }
 
-    public function execute(): string
+    public function execute(): array
     {
-        $firstName = $this->faker->firstName();
-        $lastName = $this->faker->lastName();
-        $email = $this->faker->unique()->email();
-
         $user = $this->service->create([
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'email' => $email
+            'firstName' => 'John',
+            'lastName' => 'Doe',
+            'email' => uniqid() . '@example.com'
         ]);
 
-        return sprintf(
-            "User added: ID=%d, %s %s, %s",
-            $user->getId(),
-            $user->getFirstName(),
-            $user->getLastName(),
-            $user->getEmail()
-        );
+        return [
+            'message' => 'User created',
+            'user' => $user
+        ];
     }
 }

@@ -8,7 +8,9 @@ use Dotenv\Dotenv;
 use UserManager\Repositories\RepositoryFactory;
 use UserManager\Services\UserService;
 use UserManager\Http\UserController;
-use UserManager\Exceptions\ApiException;
+use UserManager\Http\ErrorHandler;
+use UserManager\Exceptions\NotFoundException;
+use UserManager\Exceptions\ValidationException;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
@@ -16,6 +18,8 @@ $dotenv->load();
 $repository = RepositoryFactory::create($_ENV['DB_SOURCE'] ?? 'json');
 $service = new UserService($repository);
 $controller = new UserController($service);
+
+$errorHandler = new ErrorHandler($_ENV['APP_DEBUG'] === 'true');
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -30,18 +34,16 @@ try {
     };
 
     $response = match($route) {
+
         'list' => function() use ($controller) {
             $result = $controller->list();
+
             http_response_code(200);
+
             return [
                 'success' => true,
                 'data' => $result['data'],
                 'count' => $result['count'],
-                '_links' => [
-                    'self' => ['href' => '/users'],
-                    'create' => ['href' => '/users', 'method' => 'POST'],
-                    'docs' => ['href' => '/']
-                ]
             ];
         },
 
@@ -49,89 +51,52 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \InvalidArgumentException('Invalid JSON format');
+                throw new ValidationException([
+                    'body' => 'Invalid JSON format'
+                ]);
             }
 
             $result = $controller->create($input);
+
             http_response_code(201);
 
             return [
                 'success' => true,
                 'data' => $result['data'],
                 'message' => $result['message'],
-                '_links' => [
-                    'self' => ['href' => '/users/' . $result['data']['id']],
-                    'list' => ['href' => '/users'],
-                    'delete' => ['href' => '/users/' . $result['data']['id'], 'method' => 'DELETE']
-                ]
             ];
         },
 
         'delete' => function() use ($controller, $matches) {
             $id = (int)$matches[1];
+
             $result = $controller->delete($id);
+
             http_response_code(200);
 
             return [
                 'success' => true,
                 'message' => $result['message'],
-                '_links' => [
-                    'list' => ['href' => '/users']
-                ]
             ];
         },
 
         'docs' => function() {
             http_response_code(200);
+
             return [
                 'success' => true,
-                'message' => 'User Manager API',
-                '_links' => [
-                    'users' => ['href' => '/users', 'method' => 'GET'],
-                    'create_user' => ['href' => '/users', 'method' => 'POST'],
-                    'delete_user' => ['href' => '/users/{id}', 'method' => 'DELETE']
-                ]
+                'message' => 'User Manager API'
             ];
         },
 
         'not_found' => function() {
-            throw new \InvalidArgumentException('Endpoint not found');
+            throw new NotFoundException('Endpoint not found');
         }
     };
 
-    $responseData = $response();
+    header('Content-Type: application/json');
+    echo json_encode($response(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-} catch (ApiException $e) {
-    http_response_code($e->getCode() ?: 400);
-    $responseData = [
-        'success' => false,
-        'error' => $e->getCode(),
-        'message' => $e->getMessage(),
-        '_links' => [
-            'docs' => ['href' => '/']
-        ]
-    ];
-} catch (\InvalidArgumentException $e) {
-    http_response_code(404);
-    $responseData = [
-        'success' => false,
-        'error' => 404,
-        'message' => $e->getMessage(),
-        '_links' => [
-            'docs' => ['href' => '/']
-        ]
-    ];
 } catch (\Throwable $e) {
-    http_response_code(500);
-    $responseData = [
-        'success' => false,
-        'error' => 500,
-        'message' => 'Internal server error',
-        '_links' => [
-            'docs' => ['href' => '/']
-        ]
-    ];
+    $errorHandler->handle($e);
 }
-
-header('Content-Type: application/json');
-echo json_encode($responseData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);

@@ -6,18 +6,23 @@ namespace UserManager\Exceptions;
 
 class ValidationException extends ApiException
 {
-    public function __construct(string $message)
-    {
-        parent::__construct($message, 400);
-    }
+    private array $errors;
 
-    public function getStatusCode(): int
+    public function __construct(array $errors)
     {
-        return 400;
+        parent::__construct('Validation failed', 400);
+        $this->errors = $errors;
     }
 
     public function getErrorCode(): string
     {
         return 'VALIDATION_ERROR';
+    }
+
+    public function toArray(): array
+    {
+        return array_merge(parent::toArray(), [
+            'fields' => $this->errors,
+        ]);
     }
 }
